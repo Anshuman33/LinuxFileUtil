@@ -1,6 +1,6 @@
 #include<stdio.h>
 #include<unistd.h>
-
+#include "commons.h"
 
 /*
     The program should be run by using the following command:
@@ -15,6 +15,9 @@
      
 */
 int main(int argc, int argv[]){
-    
-    
+    char * path = "../statdemo.c";
+    char buf[1024];
+    if(getFileInfo(path, buf) != -1){
+        printf("%s",buf);
+    }
 }
