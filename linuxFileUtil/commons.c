@@ -2,7 +2,18 @@
 #include <string.h>
 #include <stdio.h>
 
+
+/*
+    Fetches file permissions from mode field and
+    converts into UNIX style permission string.
+    Parameters: 
+        mode: mode field of a file
+        buf: buffer to store the file type string
+    
+    Returns: none
+*/
 void getPermStr(mode_t mode, char * buf){
+
     // Fill all positions with '-' initially
     for(int i = 0; i < 10; i++){
         buf[i] = '-';
@@ -42,7 +53,16 @@ void getPermStr(mode_t mode, char * buf){
     buf[10] = '\0';
 }
 
+/*
+    Fetches type of file from mode field.
+    Parameters: 
+        mode: mode field of a file
+        buf: buffer to store the file type string
+    
+    Returns: none
+*/
 void getFileType(mode_t mode, char * buf){
+    
     if((mode & S_IFMT) == S_IFREG)
         sprintf(buf, "regular file");
     else if((mode & S_IFMT) == S_IFDIR)
@@ -57,7 +77,15 @@ void getFileType(mode_t mode, char * buf){
         sprintf(buf, "character special file");
 }
 
-int  formatInfo(const struct stat * info, char * buff){
+/*
+    Converts output returned from stat system call into readable format.
+    Parameters:
+        - info: structure containing the file information returned from stat().
+        - buff: buffer to store the formatted string.
+    Returns:
+        number of characters written onto buffer.
+*/
+int formatInfo(const struct stat * info, char * buff){
     int uid = info->st_uid;
     int gid = info->st_gid;
     
@@ -80,12 +108,24 @@ int  formatInfo(const struct stat * info, char * buff){
     return n;
 }
 
+/*
+    Fetches information regarding to the file corresponding to the path.
+    Parameters:
+        - path: path of the file.
+        - buff: buffer in which the output/info string will be stored. Should be large enough
+                to store the output.
+    Returns: length of the output in buff or -1 incase of error
+*/
 int getFileInfo(const char * path, char * buff){
+    
     struct stat info;
     int n = stat(path, &info);
     if(n == 0){
         int s = formatInfo(&info, buff);
         return s;
     }
-    return -1;
+    else{
+        fprintf(stderr, "Error fetching file information.");
+        return -1;
+    }
 }
