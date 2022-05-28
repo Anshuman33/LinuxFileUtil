@@ -1,7 +1,65 @@
-#include "commons.h"
 #include <string.h>
 #include <stdio.h>
+#include "commons.h"
 
+/*
+    Get the mode field of the file corresponding to the file descriptor.
+    Parameters:
+        - fd: file descriptor of the file
+    Returns:
+        - mode field of the file.
+*/
+mode_t getFileMode(int fd){
+    struct stat statbuf;
+    if(fstat(fd, &statbuf) == -1){
+        return 0;
+    }
+    return statbuf.st_mode;
+}
+
+/*
+    Convert octal string of file permissions to mode_t.
+    Parameters:
+        - octModeStr: permissions of the file in octal string form.
+    Returns:
+        - mode_t with permissions specified in octal string.
+*/
+mode_t octalToMode(char * octModeStr){
+    
+    if(strlen(octModeStr) != 3){
+        fprintf(stderr, "Invalid mode string.\n");
+        return -1;
+    }
+    mode_t mode = 0;
+    
+    unsigned int usrPerm = octModeStr[1] - '0';
+    unsigned int grpPerm = octModeStr[2] - '0';
+    unsigned int othPerm = octModeStr[3] - '0';
+
+    if(usrPerm > 7 || grpPerm > 7 || othPerm > 7){
+        fprintf(stderr, "Invalid mode string.\n");
+        return -1;
+    }
+    if(usrPerm & 4)
+        mode |= S_IRUSR;
+    if(usrPerm & 2)
+        mode |= S_IWUSR;
+    if(usrPerm & 1)
+        mode |= S_IXUSR;
+    if(grpPerm & 4)
+        mode |= S_IRGRP;
+    if(grpPerm & 2)
+        mode |= S_IWGRP;
+    if(grpPerm & 1)
+        mode |= S_IXGRP;
+    if(othPerm & 4)
+        mode |= S_IROTH;
+    if(othPerm & 2)
+        mode |= S_IWOTH;
+    if(othPerm & 1)
+        mode |= S_IXOTH;    
+    return mode;
+}
 
 /*
     Fetches file permissions from mode field and
@@ -80,12 +138,12 @@ void getFileType(mode_t mode, char * buf){
 /*
     Converts output returned from stat system call into readable format.
     Parameters:
-        - info: structure containing the file information returned from stat().
+        - info: pointer to struct stat containing the file information returned from stat().
         - buff: buffer to store the formatted string.
     Returns:
         number of characters written onto buffer.
 */
-int formatInfo(const struct stat * info, char * buff){
+int formatFileStat(const struct stat * info, char * buff){
     int uid = info->st_uid;
     int gid = info->st_gid;
     
@@ -108,24 +166,3 @@ int formatInfo(const struct stat * info, char * buff){
     return n;
 }
 
-/*
-    Fetches information regarding to the file corresponding to the path.
-    Parameters:
-        - path: path of the file.
-        - buff: buffer in which the output/info string will be stored. Should be large enough
-                to store the output.
-    Returns: length of the output in buff or -1 incase of error
-*/
-int getFileInfo(const char * path, char * buff){
-    
-    struct stat info;
-    int n = stat(path, &info);
-    if(n == 0){
-        int s = formatInfo(&info, buff);
-        return s;
-    }
-    else{
-        fprintf(stderr, "Error fetching file information.");
-        return -1;
-    }
-}
