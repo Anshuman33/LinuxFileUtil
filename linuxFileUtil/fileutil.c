@@ -22,23 +22,30 @@ int createFile(const char * path, char * filetype, char * modeStr){
     int fd;
     mode_t mode = 0666;
 
+    if(path == NULL){
+        fprintf(stderr, RED "Null path specified." NC);
+        return -1;
+    }
+
     if(modeStr != NULL){
         mode = octalToMode(modeStr);
         if(mode == -1)
             return -1;
     }
-
+    // mode_t testMode = S_IFREG | S_IRUSR | S_IWUSR | S_IWGRP | S_IWOTH;
+    // printf("%o %o", mode, testMode);
+    
     if(filetype == NULL || strcmp(filetype,"reg") == 0){
         mode |= S_IFREG;
         fd = creat(path, mode);
     }
-    else if(strcmp(filetype,"npipe")){
+    else if(strcmp(filetype,"npipe") == 0){
         mode |= S_IFIFO;
         //fd = mknod(path, 010777, 0);
-        fd = mknod(path, mode, 0);
+        fd = mknod(path, mode | S_IFIFO, 0);
     }
     else{
-        fprintf(stderr, "Invalid filetype.\n");
+        fprintf(stderr, RED "Invalid filetype.\n" NC);
         return -1;
     }
 
@@ -60,12 +67,12 @@ int openFile(const char * path, const char * mode){
     else if(strcmp(mode, "a") == 0)
         flag = O_WRONLY | O_APPEND;
     else{
-        perror("Invalid open mode.");
+        fprintf(stderr, RED "Invalid open mode.\n" NC);
         return -1;
     }
     int fd = open(path, flag);
     if(fd == -1){
-        perror("Error opening file");
+        perror(RED "Error opening file" NC);
     }
     return fd;
 }
@@ -73,31 +80,40 @@ int openFile(const char * path, const char * mode){
 int readFile(int fd, char * buff, ssize_t numBytes, off_t offset){
     mode_t mode = getFileMode(fd);
     if(mode == 0){
-        perror("Error reading from file");
+        perror(RED "Error reading from file" NC);
         return -1;
     }
 
     if(S_ISREG(mode) && offset >= 0){ // For random access in case of regular files
-        lseek(fd, offset, SEEK_SET);
+        if(lseek(fd, offset, SEEK_SET) == -1){
+            perror(RED "\nError writing to file\n" NC);
+            return -1;
+        }
+
     }
 
     ssize_t bytesRead = 0;
     if(numBytes == -1){
         int c = 0, readsize = 1024;
-        
+        // Reading till the EOF
         while((c = read(fd, buff, readsize)) > 0){
             buff += c;
             bytesRead += c;
         }
+        if(c == -1){
+            perror(RED "Error reading from file" NC);
+            return -1;
+        }
     }
     else{
+        // Reading uptil numBytes or EOF whichever comes first.
         bytesRead = read(fd, buff, numBytes);
+        if(bytesRead == -1){
+            perror(RED "Error reading from file" NC);
+            return -1;
+        }
     }
     
-    if(bytesRead == -1){
-        perror("Error reading from file");
-        return -1;
-    }
     return bytesRead;
 }
 
@@ -110,7 +126,10 @@ int writeToFile(int fd, char * buff, ssize_t numBytes, off_t offset){
 
 
     if(S_ISREG(mode) && offset >= 0){ // For random access in case of regular files
-        lseek(fd, offset, SEEK_SET);
+        if(lseek(fd, offset, SEEK_SET) == -1){
+            perror(RED "\nError writing to file\n" NC);
+            return -1;
+        }
     }
 
     ssize_t bytesWritten = 0;

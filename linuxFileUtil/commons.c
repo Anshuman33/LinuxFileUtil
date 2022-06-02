@@ -1,5 +1,8 @@
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "commons.h"
 
 /*
@@ -32,12 +35,11 @@ mode_t octalToMode(char * octModeStr){
     }
     mode_t mode = 0;
     
-    unsigned int usrPerm = octModeStr[1] - '0';
-    unsigned int grpPerm = octModeStr[2] - '0';
-    unsigned int othPerm = octModeStr[3] - '0';
-
+    unsigned int usrPerm = octModeStr[0] - '0';
+    unsigned int grpPerm = octModeStr[1] - '0';
+    unsigned int othPerm = octModeStr[2] - '0';
     if(usrPerm > 7 || grpPerm > 7 || othPerm > 7){
-        fprintf(stderr, "Invalid mode string.\n");
+        fprintf(stderr, "Invalid mode string %d%d%d.\n",usrPerm,grpPerm,othPerm);
         return -1;
     }
     if(usrPerm & 4)
@@ -57,7 +59,7 @@ mode_t octalToMode(char * octModeStr){
     if(othPerm & 2)
         mode |= S_IWOTH;
     if(othPerm & 1)
-        mode |= S_IXOTH;    
+        mode |= S_IXOTH;
     return mode;
 }
 
@@ -166,3 +168,19 @@ int formatFileStat(const struct stat * info, char * buff){
     return n;
 }
 
+/*
+    Checks if file exists
+    Parameters:
+        path: path of the file to be tested
+    Returns:
+        1 if file exists, else 0
+    
+*/
+int fileExists(const char * path){
+    int fd = open(path, O_RDONLY);
+    if(fd == -1 && errno == EEXIST){
+        close(fd);
+        return 1;
+    }
+    return 0;
+}
