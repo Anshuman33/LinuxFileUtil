@@ -5,7 +5,8 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <stdio.h>
-#include "commons.h"
+#include <libgen.h>
+#include "helper.h"
 #include "fileutil.h"
 
 /*
@@ -32,8 +33,6 @@ int createFile(const char * path, char * filetype, char * modeStr){
         if(mode == -1)
             return -1;
     }
-    // mode_t testMode = S_IFREG | S_IRUSR | S_IWUSR | S_IWGRP | S_IWOTH;
-    // printf("%o %o", mode, testMode);
     
     if(filetype == NULL || strcmp(filetype,"reg") == 0){
         mode |= S_IFREG;
@@ -56,6 +55,15 @@ int createFile(const char * path, char * filetype, char * modeStr){
     return fd;
 }
 
+
+/*
+    Opens and existing file.
+    Parameters:
+        - path: path of the file to be created
+        - mode: mode in which to open the file. (r-read, w-write, wt-truncate write, a-append)
+    Returns:
+        - file descriptor corresponding to the opened file, -1 in case of error.
+*/
 int openFile(const char * path, const char * mode){
     int flag;
     if(strcmp(mode,"r") == 0)
@@ -77,6 +85,17 @@ int openFile(const char * path, const char * mode){
     return fd;
 }
 
+
+/*
+    Reads content from an opened file.
+    Parameters:
+        - fd: file descriptor of the opened file.
+        - buff: character buffer in which to store the read content.
+        - numBytes: number of bytes to read.
+        - offset: file offset(from start) to start reading from.
+    Returns:
+        - number of bytes successfully read, -1 in case of error.
+*/
 int readFile(int fd, char * buff, ssize_t numBytes, off_t offset){
     mode_t mode = getFileMode(fd);
     if(mode == 0){
@@ -117,6 +136,17 @@ int readFile(int fd, char * buff, ssize_t numBytes, off_t offset){
     return bytesRead;
 }
 
+
+/*
+    Write content to an opened file.
+    Parameters:
+        - fd: file descriptor of the opened file.
+        - buff: character buffer which holds the data to write.
+        - numBytes: number of bytes to write from buffer.
+        - offset: file offset(from start) to start writing from.
+    Returns:
+        - number of bytes successfully written, -1 in case of error.
+*/
 int writeToFile(int fd, char * buff, ssize_t numBytes, off_t offset){
     mode_t mode = getFileMode(fd);
     if(mode == 0){
@@ -155,12 +185,13 @@ int writeToFile(int fd, char * buff, ssize_t numBytes, off_t offset){
                 to store the output.
     Returns: length of the output in buff or -1 incase of error
 */
-int getFileInfo(const char * path, char * buff){
+int getFileInfo(char * path, char * buff){
     
     struct stat info;
     int n = stat(path, &info);
     if(n == 0){
-        int s = formatFileStat(&info, buff);
+        int i = sprintf(buff, "File : %s", basename(path));
+        int s = formatFileStat(&info, buff+i);
         return s;
     }
     else{

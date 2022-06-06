@@ -4,15 +4,9 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include "fileutil.h"
-#include "commons.h"
+#include "helper.h"
 
 #define esc 27
-/*
-    The program should be run by using the following command:
-
-        ./linuxFileUtil <action> filename -t <reg/npipe/pipe>  -m <mode>
-        
-*/
 
 void flushBuffer(char buf[], ssize_t n){
     for(int i = 0; i < n; i++){
@@ -20,7 +14,7 @@ void flushBuffer(char buf[], ssize_t n){
     }
 }
 
-void flushExtraNewLine(){
+void flushExtraNewLine(){printf("Hello");
     int c;
     while ((c = getchar()) != '\n' && c != EOF);
 }
@@ -30,12 +24,12 @@ int main(int argc, char * argv[]){
     off_t offset;
     ssize_t byteCount, bufsize;
     struct stat statbuf;
-    char * action = NULL, *filepath=NULL, *mode=NULL, *buf=NULL, *filetype = "reg", *octalStr=NULL;
+    char * action = NULL, *filepath=NULL, *mode="r", *buf=NULL, *filetype = "reg", *octalStr=NULL;
 
     if(argc < 2){
         printf("Insufficient arguments. Please specify the action along with relevant arguments.\n");
         printf("Usage:\n");
-        printf("\t./linuxFileUtil <action> filename -t <type> -p <permissions> -m <mode>\n");
+        printf("\t./main <action> -t <type> -p <permissions> -m <mode> filename\n");
         printf(
             "\nwhere "
             "\n\t <action> : action to perform"
@@ -59,63 +53,65 @@ int main(int argc, char * argv[]){
         exit(1);
     }
     action = argv[1];
-    if(argc < 3){
-        printf("Please provide path of the file.\n");
-        exit(1);
-    }
-    filepath = argv[2];
+    int idx = 2;
 
-    // Processing the optional commandline arguments
-    if(argc > 3){
-        int idx = 3;
-        while(idx < argc){
-            // Processing file type argument
-            if(strcmp(argv[idx],"-t") == 0){
-                idx++;
-                if(idx >= argc){
-                    printf("Insufficient arguments. Provide file type. Use\n \
-                            \t'reg' for regular file\n \
-                            \t'npipe' for named pipe\n \
-                            \t'pipe' for unnamed pipe\n.");
-                    exit(1);
-                }
-                filetype = argv[idx];
-                idx++;
+    // Processing the optional commandline arguments    
+    while(idx < argc && argv[idx][0] == '-'){
+        // Processing file type argument
+        if(strcmp(argv[idx],"-t") == 0){
+            idx++;
+            if(idx >= argc){
+                printf("Insufficient arguments. Provide file type. Use\n \
+                        \t'reg' for regular file\n \
+                        \t'npipe' for named pipe\n \
+                        \t'pipe' for unnamed pipe\n.");
+                exit(1);
             }
-
-            // Processing permissions argument
-            else if(strcmp(argv[idx], "-p")==0){
-                idx++;
-                if(idx >= argc){
-                    printf("Insufficient arguments. Please provide octal string for permission.\n");
-                    exit(1);
-                }
-                octalStr = argv[idx];
-                idx++;
-            }
-
-            // Processing mode argument
-            else if(strcmp(argv[idx], "-m")==0){
-                idx++;
-                if(idx >= argc){
-                    printf("Insufficient arguments. Please provide file mode.\n");
-                    exit(1);
-                }
-                mode = argv[idx];
-                idx++;
-            }
-
-            else
-                idx++;
+            filetype = argv[idx];
+            idx++;
         }
-        
+
+        // Processing permissions argument
+        else if(strcmp(argv[idx], "-p")==0){
+            idx++;
+            if(idx >= argc){
+                printf("Insufficient arguments. Please provide octal string for permission.\n");
+                exit(1);
+            }
+            octalStr = argv[idx];
+            idx++;
+        }
+
+        // Processing mode argument
+        else if(strcmp(argv[idx], "-m")==0){
+            idx++;
+            if(idx >= argc){
+                printf("Insufficient arguments. Please provide file mode.\n");
+                exit(1);
+            }
+            mode = argv[idx];
+            idx++;
+        }
+        else{
+            printf("Invalid option. Available options: \"-t\", \"-m\", or \"-p\"\n");
+            exit(1);
+        }
     }
+    // printf("Filetype:%s action:%s",filetype, action);
+    if(strcmp(filetype,"pipe") != 0){
+        if(idx >= argc){
+            printf("Please provide path of the file.\n");
+            exit(1);
+        }
+        filepath = argv[idx];
+    }    
 
     /* For info command */
     if(strcmp(action, "info") == 0){
         char infoBuf[500];
-        if(getFileInfo(filepath, infoBuf) != -1)
+        if(getFileInfo(filepath, infoBuf) != -1){
             printf("%s",infoBuf);
+        }
     }
     
     /* For create command */
@@ -129,7 +125,7 @@ int main(int argc, char * argv[]){
                 printf("\nFile already exists. Do you want to truncate it?(y/n):");
                 char res;
                 scanf("%c", &res);
-                flushExtraNewLine();
+                flushExtraNewLine();  // Flush extra newline entered by scanf.
                 if(res != 'y'){
                     printf("\nAbort file creation\n");
                     exit(1);
@@ -146,17 +142,54 @@ int main(int argc, char * argv[]){
                 exit(1);
             }
         }
-        // Creation of pipes
+        // Creation of unnamed pipes
         else if(strcmp(filetype, "pipe") == 0){
-            /*TODO: Add code for unnamed pipe*/
+            int fds[2];
+            if(pipe(fds) == -1){
+                perror(RED "Error opening pipe." NC);
+                exit(1);
+            }
+            int cpid = fork();
+            if(cpid == 0){ // Child reads from read end of pipe
 
+                // Dynamically allocate buffer for reading from pipe
+                bufsize = 1024;
+                buf = (char*) malloc(sizeof(char) * bufsize); 
 
+                if(buf == NULL){
+                    perror("Unable to allocate buffer.");
+                    exit(1);
+                }
+
+                while(1){
+                    byteCount = readFile(fds[0], buf, bufsize, -1);
+                    if(byteCount > 0){
+                        printf("[CHILD %d]Data read from pipe:%s", getpid(), buf);
+                        flushBuffer(buf, bufsize);
+                    }
+                }
+            }
+            else if(cpid > 0){ // Parent writes to write end of the pipe
+                buf = NULL;
+                bufsize = 1024;
+                while(1){
+                    printf("\n[PARENT %d]Input data to write to pipe(Press Ctrl+C to exit):\n",getpid());
+                    bufsize = getline(&buf, &bufsize, stdin);
+                    if(bufsize > 0)
+                        writeToFile(fds[1], buf, bufsize, -1);
+                    sleep(1);
+                }
+                close(fds[1]);    
+            }
+            else{
+                perror("Error forking new process for pipe.");
+                exit(1);
+            }
         }
         else{
             printf("Invalid file type.");
             exit(1);
         }
-        
     }
 
     /* For open command.*/
@@ -198,8 +231,8 @@ int main(int argc, char * argv[]){
                     exit(1);
                 }
 
+                // Read from file and print on standard output
                 byteCount = readFile(fd, buf, bufsize, offset);
-                
                 if(byteCount >= 0){
                     printf("\nData Read from file:\n");
                     for(int i = 0 ; i < byteCount; i++){
@@ -213,7 +246,7 @@ int main(int argc, char * argv[]){
                 buf = NULL;
                 printf("Input data to write to file(Press esc and enter to finish):\n");
                 bufsize = getdelim(&buf, &bufsize, esc, stdin);
-                writeToFile(fd, buf, bufsize-1, offset);
+                writeToFile(fd, buf, bufsize-1, offset); // Writing only bufsize-1 to avoid writing escape character
             }
         } 
         else if(S_ISFIFO(statbuf.st_mode)){ // Handling of fifo files
@@ -251,7 +284,7 @@ int main(int argc, char * argv[]){
                 }
             }
         }
-        if(buf != NULL)
+        if(buf != NULL) // free buffer
             free(buf);
             
         close(fd);

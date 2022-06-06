@@ -3,7 +3,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include "commons.h"
+#include <time.h>
+#include "helper.h"
 
 /*
     Get the mode field of the file corresponding to the file descriptor.
@@ -156,13 +157,22 @@ int formatFileStat(const struct stat * info, char * buff){
     char permStr[11];
     getPermStr(info->st_mode, permStr);
 
+    char * ctimstr = ctime(&(info->st_ctim.tv_sec));
+    char * atimstr = ctime(&(info->st_atim.tv_sec));
+    char * mtimstr = ctime(&(info->st_atim.tv_sec));
     int n = sprintf(buff, 
-        "\nSize: %ld\tBlocks:%ld\tFile Type: %s \
-        \nAccess Permissions:%s\tUID:%d\tGID:%d \
-        \nDev#:%ld\tInode#:%ld\tLinks:%ld\n",
+        "\nSize: %ld\tBlocks:%ld\tFile Type: %s "
+        "\nAccess Permissions:%s\tUID:%d\tGID:%d "
+        "\nDev#:%ld\tInode#:%ld\tLinks:%ld "
+        "\nInode change time: %s"
+        "Last access: %s"
+        "Last modified: %s\n",
         info->st_size, info->st_blocks,filetype, 
         permStr, uid, gid, 
-        info->st_dev, info->st_ino, info->st_nlink
+        info->st_dev, info->st_ino, info->st_nlink,
+        ctimstr,
+        atimstr,
+        mtimstr
     );
 
     return n;

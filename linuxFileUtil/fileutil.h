@@ -1,7 +1,7 @@
 #include<sys/stat.h>
 
 // Fetches information regarding the file.
-extern int getFileInfo(const char * path, char * buff);
+extern int getFileInfo(char * path, char * buff);
 
 // Creates a new file and returns its file descriptor
 extern int createFile(const char * path, char * filetype, char * mode);
