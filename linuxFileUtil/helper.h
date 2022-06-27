@@ -4,8 +4,8 @@
 
 #include<sys/stat.h>
 
-#define RED "\e[0;31m"
-#define NC "\e[0m"
+#define RED "\e[0;31m"  // For red color
+#define NC "\e[0m"     // For default color
 
 mode_t getFileMode(int fd);
 mode_t octalToMode(char * octModeStr);

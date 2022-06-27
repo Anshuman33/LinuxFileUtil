@@ -14,7 +14,7 @@ void flushBuffer(char buf[], ssize_t n){
     }
 }
 
-void flushExtraNewLine(){printf("Hello");
+void flushExtraNewLine(){
     int c;
     while ((c = getchar()) != '\n' && c != EOF);
 }
@@ -34,16 +34,16 @@ int main(int argc, char * argv[]){
             "\nwhere "
             "\n\t <action> : action to perform"
             "\n\t\t\"info\"  - to get file statistics,"
-            "\n\t\t\"create\"- to create new file or" 
+            "\n\t\t\"create\"- to create new file or pipe" 
             "\n\t\t\"open\"  - to open an existing file\n"
             "\n\t <type>   : type of file to create (valid only for \"create\" action)"
             "\n\t\t\"reg\"   - create a regular file(default),"
-            "\n\t\t\"npipe\" - create a named pipe or"
+            "\n\t\t\"npipe\" - create a named pipe (FIFO file)"
             "\n\t\t\"pipe\"  - create an unnamed pipe\n"
             "\n    <permissions> : octal string representation for permissions of a file (valid only for \"create\" action)"
             "\n\tFor eg. \"666\"(default) - read & write permission to owner,group & others.\n"
             "\n\t <mode>   : mode of opening (valid only for \"open\" action)"
-            "\n\t\t\"r\"     - open a file in read mode"
+            "\n\t\t\"r\"     - open a file in read mode (default)"
             "\n\t\t\"w\"     - open a file in write mode"
             "\n\t\t\"wt\"    - open a file in truncate write mode"
             "\n\t\t\"a\"     - open a file in append mode"
@@ -97,7 +97,6 @@ int main(int argc, char * argv[]){
             exit(1);
         }
     }
-    // printf("Filetype:%s action:%s",filetype, action);
     if(strcmp(filetype,"pipe") != 0){
         if(idx >= argc){
             printf("Please provide path of the file.\n");

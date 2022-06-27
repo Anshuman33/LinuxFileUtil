@@ -65,7 +65,7 @@ int createFile(const char * path, char * filetype, char * modeStr){
         - file descriptor corresponding to the opened file, -1 in case of error.
 */
 int openFile(const char * path, const char * mode){
-    int flag;
+    int flag; 
     if(strcmp(mode,"r") == 0)
         flag = O_RDONLY;
     else if(strcmp(mode, "w") == 0)
